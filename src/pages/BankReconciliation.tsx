@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { cn } from "@/lib/utils";
+import { cn, fmt } from "@/lib/utils";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { CheckCircle2, Plus } from "lucide-react";
@@ -157,8 +157,6 @@ export default function BankReconciliation() {
     },
     onError: (e: any) => toast.error(e.message),
   });
-
-  const fmt = (n: number) => `$${Math.abs(n).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
 
   const getAccountName = (id: string | null) => {
     if (!id) return "—";
