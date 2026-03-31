@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import type { TransactionWithJob } from "@/integrations/supabase/helpers";
 import PageHeader from "@/components/PageHeader";
 import { parseMoney } from "@/lib/utils";
 import DeleteConfirmDialog from "@/components/DeleteConfirmDialog";
@@ -71,7 +72,7 @@ export default function Checkbook() {
   const { data: transactions = [], isLoading } = useQuery({
     queryKey: ["transactions-checkbook"],
     queryFn: async () => {
-      let allTxns: any[] = [];
+      let allTxns: TransactionWithJob[] = [];
       let from = 0;
       const pageSize = 1000;
       while (true) {
@@ -90,7 +91,7 @@ export default function Checkbook() {
     },
   });
 
-  const resolveLinkedVendorInvoiceIds = async (tx: any) => {
+  const resolveLinkedVendorInvoiceIds = async (tx: TransactionWithJob) => {
     if (tx.vendor_invoice_id) return [tx.vendor_invoice_id];
 
     const singleInvoiceMatch = tx.memo?.match(/^Pay invoice\s+(.+)$/i);
@@ -123,7 +124,7 @@ export default function Checkbook() {
     setDupCheckWarning(dup ? `Warning: Check #${checkNo} already exists for this account (${dup.payee}, ${dup.date})` : "");
   };
 
-  const openEdit = (tx: any) => {
+  const openEdit = (tx: TransactionWithJob) => {
     setEditingId(tx.id);
     setForm({
       date: tx.date,
@@ -135,7 +136,7 @@ export default function Checkbook() {
       amount: String(tx.payment > 0 ? tx.payment : tx.deposit),
       job_id: tx.job_id || "",
       bank_account_id: tx.bank_account_id || "",
-      gl_account_id: (tx as any).gl_account_id || "",
+      gl_account_id: tx.gl_account_id || "",
     });
     setDupCheckWarning("");
     setDialogOpen(true);
@@ -208,7 +209,7 @@ export default function Checkbook() {
         category: tx.category,
         job_id: tx.job_id || null,
         bank_account_id: tx.bank_account_id,
-        gl_account_id: (tx as any).gl_account_id || null,
+        gl_account_id: tx.gl_account_id || null,
         // Reverse: if original was payment, reversal is deposit and vice versa
         deposit: tx.payment || 0,
         payment: tx.deposit || 0,
@@ -502,7 +503,7 @@ export default function Checkbook() {
                     <td className="px-4 py-3 font-medium text-card-foreground">{tx.payee}</td>
                     <td className="px-4 py-3 text-muted-foreground">{tx.memo}</td>
                     <td className="px-4 py-3 font-mono text-xs text-primary">
-                      {(tx as any).jobs?.job_number || "—"}
+                      {tx.jobs?.job_number || "—"}
                     </td>
                     <td className="px-4 py-3">
                       <span className="px-2 py-0.5 rounded-full text-xs bg-secondary text-secondary-foreground">{tx.category}</span>
