@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAll } from "@/lib/fetchAll";
+import { parseMoney } from "@/lib/utils";
 import PageHeader from "@/components/PageHeader";
 import StatCard from "@/components/StatCard";
 import JobSelect from "@/components/JobSelect";
@@ -86,7 +87,7 @@ export default function Invoices() {
     mutationFn: async () => {
       const row = {
         invoice_number: form.invoice_number, job_id: form.job_id || null, client: form.client,
-        description: form.description, amount: parseFloat(form.amount) || 0,
+        description: form.description, amount: parseMoney(form.amount),
         date: form.date, due_date: form.due_date || null, status: form.status,
       };
       if (editingId) {
@@ -127,7 +128,7 @@ export default function Invoices() {
   const receivePaymentMutation = useMutation({
     mutationFn: async () => {
       if (!payInvoice) throw new Error("No invoice selected");
-      const amount = parseFloat(payAmount) || 0;
+      const amount = parseMoney(payAmount);
       if (amount <= 0) throw new Error("Amount must be greater than 0");
       const outstanding = (payInvoice.amount || 0) - (payInvoice.paid || 0);
       if (amount > outstanding + 0.01) throw new Error("Amount exceeds outstanding balance");
