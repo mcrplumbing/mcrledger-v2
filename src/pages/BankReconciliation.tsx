@@ -290,7 +290,7 @@ export default function BankReconciliation() {
                 <tr><td colSpan={7} className="px-6 py-8 text-center text-muted-foreground">No reconciliations yet. Click "New Reconciliation" to start.</td></tr>
               ) : reconciliations.map((r) => (
                 <tr key={r.id} className="table-row-hover border-b border-border/50">
-                  <td className="px-6 py-3 font-medium text-card-foreground">{getAccountName((r as any).bank_account_id)}</td>
+                  <td className="px-6 py-3 font-medium text-card-foreground">{getAccountName(r.bank_account_id)}</td>
                   <td className="px-6 py-3 text-card-foreground">{r.statement_date}</td>
                   <td className="px-6 py-3 text-right font-mono text-card-foreground">{fmt(Number(r.statement_balance))}</td>
                   <td className="px-6 py-3 text-right font-mono text-card-foreground">{fmt(Number(r.cleared_balance))}</td>
