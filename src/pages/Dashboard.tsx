@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import PageHeader from "@/components/PageHeader";
-import { cn } from "@/lib/utils";
+import { cn, roundMoney, sumMoney } from "@/lib/utils";
 import { fetchAll } from "@/lib/fetchAll";
 import { Button } from "@/components/ui/button";
 import {
@@ -179,7 +179,7 @@ export default function Dashboard() {
       allLines.forEach((l: any) => {
         const acct = l.gl_accounts?.account_number || "";
         if (!byAcct[acct]) byAcct[acct] = 0;
-        byAcct[acct] += (l.debit || 0) - (l.credit || 0);
+        byAcct[acct] = roundMoney(byAcct[acct] + (l.debit || 0) - (l.credit || 0));
       });
       return byAcct;
     },
@@ -189,53 +189,53 @@ export default function Dashboard() {
   const cashPosition = useMemo(() => {
     if (glBalances) {
       // Sum all 1000-series accounts (cash)
-      return Object.entries(glBalances)
+      return sumMoney(Object.entries(glBalances)
         .filter(([acct]) => acct.startsWith("10"))
-        .reduce((s, [, bal]) => s + bal, 0);
+        .map(([, bal]) => bal));
     }
-    const openingBalances = bankAccounts.reduce((s, a) => s + (a.opening_balance || 0), 0);
-    const deposits = allTransactions.reduce((s, t) => s + (t.deposit || 0), 0);
-    const payments = allTransactions.reduce((s, t) => s + (t.payment || 0), 0);
-    return openingBalances + deposits - payments;
+    const openingBalances = sumMoney(bankAccounts.map((a) => a.opening_balance || 0));
+    const deposits = sumMoney(allTransactions.map((t) => t.deposit || 0));
+    const payments = sumMoney(allTransactions.map((t) => t.payment || 0));
+    return roundMoney(openingBalances + deposits - payments);
   }, [allTransactions, bankAccounts, glBalances]);
 
   // GL-based AR (account 1100) — debit balance = amount owed to us
   const openAR = useMemo(() => {
     if (glBalances) {
-      return Object.entries(glBalances)
+      return sumMoney(Object.entries(glBalances)
         .filter(([acct]) => acct === "1100")
-        .reduce((s, [, bal]) => s + bal, 0);
+        .map(([, bal]) => bal));
     }
-    return arInvoices
+    return sumMoney(arInvoices
       .filter((i) => i.status !== "paid")
-      .reduce((s, i) => s + ((i.amount || 0) - (i.paid || 0)), 0);
+      .map((i) => roundMoney((i.amount || 0) - (i.paid || 0))));
   }, [arInvoices, glBalances]);
 
   // GL-based AP (account 2000) — credit balance = amount we owe (flip sign for display)
   const openAP = useMemo(() => {
     if (glBalances) {
       // AP has credit normal balance, so debit-credit will be negative when we owe money
-      return Math.abs(Object.entries(glBalances)
+      return Math.abs(sumMoney(Object.entries(glBalances)
         .filter(([acct]) => acct === "2000")
-        .reduce((s, [, bal]) => s + bal, 0));
+        .map(([, bal]) => bal)));
     }
-    return apInvoices
+    return sumMoney(apInvoices
       .filter((i) => i.status !== "paid")
-      .reduce((s, i) => s + ((i.amount || 0) - (i.paid || 0)), 0);
+      .map((i) => roundMoney((i.amount || 0) - (i.paid || 0))));
   }, [apInvoices, glBalances]);
 
   const overdueAR = useMemo(() => {
     const today = new Date().toISOString().split("T")[0];
-    return arInvoices
+    return sumMoney(arInvoices
       .filter((i) => i.status !== "paid" && i.due_date && i.due_date < today)
-      .reduce((s, i) => s + ((i.amount || 0) - (i.paid || 0)), 0);
+      .map((i) => roundMoney((i.amount || 0) - (i.paid || 0))));
   }, [arInvoices]);
 
   const overdueAP = useMemo(() => {
     const today = new Date().toISOString().split("T")[0];
-    return apInvoices
+    return sumMoney(apInvoices
       .filter((i) => i.status !== "paid" && i.due_date && i.due_date < today)
-      .reduce((s, i) => s + ((i.amount || 0) - (i.paid || 0)), 0);
+      .map((i) => roundMoney((i.amount || 0) - (i.paid || 0))));
   }, [apInvoices]);
 
   const activeJobs = jobs.filter((j) => j.status === "active").length;
@@ -243,11 +243,11 @@ export default function Dashboard() {
   // GL-based payroll expense (account 6100)
   const totalPayroll = useMemo(() => {
     if (glBalances) {
-      return Object.entries(glBalances)
+      return sumMoney(Object.entries(glBalances)
         .filter(([acct]) => acct === "6100")
-        .reduce((s, [, bal]) => s + bal, 0);
+        .map(([, bal]) => bal));
     }
-    return payrollEntries.reduce((s, e) => s + (e.gross_pay || 0), 0);
+    return sumMoney(payrollEntries.map((e) => e.gross_pay || 0));
   }, [payrollEntries, glBalances]);
 
   // ===== Cash flow trend (last 6 months) =====
@@ -259,9 +259,9 @@ export default function Dashboard() {
       const start = format(startOfMonth(m), "yyyy-MM-dd");
       const end = format(endOfMonth(m), "yyyy-MM-dd");
       const mTxns = allTransactions.filter((t) => t.date >= start && t.date <= end);
-      const deposits = mTxns.reduce((s, t) => s + (t.deposit || 0), 0);
-      const payments = mTxns.reduce((s, t) => s + (t.payment || 0), 0);
-      months.push({ month: format(m, "MMM"), deposits, payments, net: deposits - payments });
+      const deposits = sumMoney(mTxns.map((t) => t.deposit || 0));
+      const payments = sumMoney(mTxns.map((t) => t.payment || 0));
+      months.push({ month: format(m, "MMM"), deposits, payments, net: roundMoney(deposits - payments) });
     }
     return months;
   }, [allTransactions]);
@@ -278,8 +278,8 @@ export default function Dashboard() {
         const runEnd = (e as any).payroll_runs?.period_end;
         return runEnd && runEnd >= start && runEnd <= end;
       });
-      const gross = mEntries.reduce((s, e) => s + (e.gross_pay || 0), 0);
-      const taxes = mEntries.reduce((s, e) => s + (e.fed_tax || 0) + (e.state_tax || 0) + (e.fica || 0), 0);
+      const gross = sumMoney(mEntries.map((e) => e.gross_pay || 0));
+      const taxes = sumMoney(mEntries.map((e) => roundMoney((e.fed_tax || 0) + (e.state_tax || 0) + (e.fica || 0))));
       months.push({ month: format(m, "MMM"), gross, taxes });
     }
     return months;
@@ -291,21 +291,21 @@ export default function Dashboard() {
       .filter((j) => j.status === "active")
       .map((job) => {
         const jobInvoices = arInvoices.filter((i) => i.job_id === job.id && i.status !== "void");
-        const revenue = jobInvoices.reduce((s, i) => s + (i.amount || 0), 0);
+        const revenue = sumMoney(jobInvoices.map((i) => i.amount || 0));
 
         const jobTS = timesheets.filter((t) => t.job_id === job.id);
-        const laborCost = jobTS.reduce((s, t) => {
+        const laborCost = sumMoney(jobTS.map((t) => {
           const rate = (t as any).employees?.rate || 0;
           const payType = (t as any).employees?.pay_type;
-          return s + (t.hours || 0) * (payType === "salary" ? rate / 2080 : rate);
-        }, 0);
+          return roundMoney((t.hours || 0) * (payType === "salary" ? rate / 2080 : rate));
+        }));
 
-        const apCost = vendorInvoicesAll
+        const apCost = sumMoney(vendorInvoicesAll
           .filter((i) => i.job_id === job.id && i.status !== "void")
-          .reduce((s, i) => s + (i.amount || 0), 0);
+          .map((i) => i.amount || 0));
 
-        const totalCost = laborCost + apCost;
-        const profit = revenue - totalCost;
+        const totalCost = roundMoney(laborCost + apCost);
+        const profit = roundMoney(revenue - totalCost);
         const margin = revenue > 0 ? (profit / revenue) * 100 : 0;
 
         return {
