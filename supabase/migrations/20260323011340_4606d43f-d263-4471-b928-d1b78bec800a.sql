@@ -1,0 +1,1 @@
+ALTER TABLE public.employee_deductions ADD COLUMN reduces_fica boolean NOT NULL DEFAULT false;

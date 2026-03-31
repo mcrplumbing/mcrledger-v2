@@ -1,0 +1,2 @@
+ALTER TABLE public.tax_settings DROP CONSTRAINT tax_settings_tax_type_check;
+ALTER TABLE public.tax_settings ADD CONSTRAINT tax_settings_tax_type_check CHECK (tax_type = ANY (ARRAY['federal'::text, 'state'::text, 'fica_ss'::text, 'fica_medicare'::text, 'fica_medicare_addl'::text, 'futa'::text, 'suta'::text]));

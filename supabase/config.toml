@@ -1,0 +1,7 @@
+project_id = "opqfojdmgfwdiopjtigv"
+
+[functions.parse-tax-tables]
+verify_jwt = false
+
+[functions.parse-vendor-invoice]
+verify_jwt = false

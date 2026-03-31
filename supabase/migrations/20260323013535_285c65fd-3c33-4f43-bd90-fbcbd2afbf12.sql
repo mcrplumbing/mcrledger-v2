@@ -1,0 +1,2 @@
+UPDATE public.tax_settings SET rate = 0.012 WHERE tax_type = 'suta' AND effective_year = 2025;
+UPDATE public.employee_deductions SET reduces_fica = true WHERE deduction_type = 'health_insurance' AND active = true;

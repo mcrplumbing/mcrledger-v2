@@ -1,0 +1,1 @@
+ALTER TABLE public.timesheets ADD COLUMN pay_class text NOT NULL DEFAULT 'regular';
