@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import ClientSelect from "@/components/ClientSelect";
 import { Plus, Briefcase, DollarSign, TrendingUp, Pencil, Trash2, Eye } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, fmt, parseMoney } from "@/lib/utils";
 import { fetchAll } from "@/lib/fetchAll";
 import { toast } from "sonner";
 
@@ -73,7 +73,7 @@ export default function Jobs() {
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      const row = { job_number: form.job_number, name: form.name, client: form.client, budget: parseFloat(form.budget) || 0, status: form.status };
+      const row = { job_number: form.job_number, name: form.name, client: form.client, budget: parseMoney(form.budget), status: form.status };
       if (editingId) {
         const { error } = await supabase.from("jobs").update(row).eq("id", editingId);
         if (error) throw error;
@@ -198,7 +198,6 @@ export default function Jobs() {
               ) : jobs.length === 0 ? (
                 <tr><td colSpan={12} className="px-6 py-8 text-center text-muted-foreground">No jobs yet.</td></tr>
               ) : jobRows.map((job) => {
-                const fmt = (n: number) => `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
                 return (
                   <tr key={job.id} className="table-row-hover border-b border-border/50">
                     <td className="px-6 py-3 font-mono text-xs text-card-foreground">{job.job_number}</td>
