@@ -2,6 +2,7 @@
 import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { parseMoney, sumMoney } from "@/lib/utils";
 import { fetchAll } from "@/lib/fetchAll";
 import PageHeader from "@/components/PageHeader";
 import VendorSelect from "@/components/VendorSelect";
@@ -66,12 +67,12 @@ export default function ApOpeningBalances() {
 
   // All math from on-page data only
   const totalAP = useMemo(
-    () => lines.reduce((s, l) => s + (parseFloat(l.amount) || 0), 0),
+    () => sumMoney(lines.map((l) => parseMoney(l.amount))),
     [lines]
   );
 
   const validLines = useMemo(
-    () => lines.filter((l) => l.vendor_id && l.invoice_no && (parseFloat(l.amount) || 0) > 0),
+    () => lines.filter((l) => l.vendor_id && l.invoice_no && parseMoney(l.amount) > 0),
     [lines]
   );
 
@@ -104,7 +105,7 @@ export default function ApOpeningBalances() {
       const invoiceInserts = validLines.map((l) => ({
         vendor_id: l.vendor_id,
         invoice_no: l.invoice_no,
-        amount: parseFloat(l.amount) || 0,
+        amount: parseMoney(l.amount),
         job_id: l.job_id || null,
         date: new Date().toISOString().slice(0, 10),
         status: "open",
@@ -140,7 +141,7 @@ export default function ApOpeningBalances() {
       const jeLines: { journal_entry_id: string; account_id: string; debit: number; credit: number; description: string; job_id: string | null }[] = [];
 
       for (const l of validLines) {
-        const amt = parseFloat(l.amount) || 0;
+        const amt = parseMoney(l.amount);
         const vName = vendorName(l.vendor_id);
         // DR OBE — UNTAGGED (no job_id) so it doesn't affect job costing
         jeLines.push({
