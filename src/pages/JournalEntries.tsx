@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Trash2, Eye } from "lucide-react";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
+import { cn, parseMoney, sumMoney } from "@/lib/utils";
 
 interface Line {
   account_id: string;
@@ -50,8 +50,8 @@ export default function JournalEntries() {
     queryFn: async () => { const { data, error } = await supabase.from("jobs").select("id, job_number, name").order("job_number"); if (error) throw error; return data; },
   });
 
-  const totalDebits = lines.reduce((s, l) => s + (parseFloat(l.debit) || 0), 0);
-  const totalCredits = lines.reduce((s, l) => s + (parseFloat(l.credit) || 0), 0);
+  const totalDebits = sumMoney(lines.map((l) => parseMoney(l.debit)));
+  const totalCredits = sumMoney(lines.map((l) => parseMoney(l.credit)));
   const isBalanced = Math.abs(totalDebits - totalCredits) < 0.01 && totalDebits > 0;
 
   const createEntry = useMutation({
@@ -63,10 +63,10 @@ export default function JournalEntries() {
       if (hErr) throw hErr;
 
       const lineInserts = lines
-        .filter((l) => l.account_id && (parseFloat(l.debit) || parseFloat(l.credit)))
+        .filter((l) => l.account_id && (parseMoney(l.debit) || parseMoney(l.credit)))
         .map((l) => ({
           journal_entry_id: entry.id, account_id: l.account_id,
-          debit: parseFloat(l.debit) || 0, credit: parseFloat(l.credit) || 0,
+          debit: parseMoney(l.debit), credit: parseMoney(l.credit),
           description: l.description, job_id: l.job_id || null,
         }));
 
