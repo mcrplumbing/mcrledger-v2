@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { cn } from "@/lib/utils";
+import { cn, fmt, roundMoney } from "@/lib/utils";
 import { fetchAll } from "@/lib/fetchAll";
 
 type DrillItem = {
@@ -194,8 +194,6 @@ export default function Reports() {
   // Balance Sheet helpers (cumulative — ignores dateFrom)
   const bsByType = (type: string) => bsAccountBalances.filter((a) => a.account_type === type && a.balance !== 0);
   const bsSumType = (type: string) => bsByType(type).reduce((s, a) => s + a.balance, 0);
-
-  const fmt = (n: number) => `$${Math.abs(n).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
 
   const AgingTable = ({ title, aging, items, nameField }: {
     title: string; aging: ReturnType<typeof agingBuckets>; items: any[]; nameField: string;
@@ -386,9 +384,9 @@ export default function Reports() {
                   <tr key={j.id} className="table-row-hover border-b border-border/50">
                     <td className="px-6 py-3 font-medium text-card-foreground">{j.job_number} - {j.name}</td>
                     <td className="px-6 py-3 text-right font-mono text-success">{fmt(j.revenue)}</td>
-                    <td className="px-6 py-3 text-right font-mono text-card-foreground">{fmt(Math.round(j.laborCost))}</td>
+                    <td className="px-6 py-3 text-right font-mono text-card-foreground">{fmt(roundMoney(j.laborCost))}</td>
                     <td className="px-6 py-3 text-right font-mono text-card-foreground">{fmt(j.subExpenses)}</td>
-                    <td className={cn("px-6 py-3 text-right font-mono font-medium", j.profit >= 0 ? "text-success" : "text-destructive")}>{fmt(Math.round(j.profit))}</td>
+                    <td className={cn("px-6 py-3 text-right font-mono font-medium", j.profit >= 0 ? "text-success" : "text-destructive")}>{fmt(roundMoney(j.profit))}</td>
                     <td className="px-6 py-3 text-right font-mono text-muted-foreground">{j.margin.toFixed(1)}%</td>
                   </tr>
                 ))}
