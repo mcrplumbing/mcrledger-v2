@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import type { JobInvoiceWithJob } from "@/integrations/supabase/helpers";
 import { fetchAll } from "@/lib/fetchAll";
 import { parseMoney } from "@/lib/utils";
 import PageHeader from "@/components/PageHeader";
@@ -46,7 +47,7 @@ export default function Invoices() {
 
   const { data: invoices = [], isLoading } = useQuery({
     queryKey: ["job-invoices"],
-    queryFn: async () => fetchAll((sb) => sb.from("job_invoices").select("*, jobs(job_number, name)").order("date", { ascending: false })),
+    queryFn: async () => fetchAll((sb) => sb.from("job_invoices").select("*, jobs(job_number, name)").order("date", { ascending: false })) as Promise<JobInvoiceWithJob[]>,
   });
 
   const { data: undepositedCount = 0 } = useQuery({
@@ -305,7 +306,7 @@ export default function Invoices() {
                   <tr key={inv.id} className="table-row-hover border-b border-border/50">
                     <td className="px-6 py-3 font-mono text-xs font-medium text-card-foreground">{inv.invoice_number}</td>
                     <td className="px-6 py-3 font-medium text-card-foreground">{inv.client}</td>
-                    <td className="px-6 py-3 font-mono text-xs text-primary">{(inv as any).jobs?.job_number ? `${(inv as any).jobs.job_number} - ${(inv as any).jobs.name}` : "—"}</td>
+                    <td className="px-6 py-3 font-mono text-xs text-primary">{inv.jobs?.job_number ? `${inv.jobs.job_number} - ${inv.jobs.name}` : "—"}</td>
                     <td className="px-6 py-3 text-muted-foreground">{inv.date}</td>
                     <td className="px-6 py-3 text-muted-foreground">{inv.due_date || "—"}</td>
                     <td className="px-6 py-3 text-right font-mono font-medium text-card-foreground">${(inv.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
