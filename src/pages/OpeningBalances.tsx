@@ -10,7 +10,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { format } from "date-fns";
 import { CalendarIcon, ChevronRight, ChevronLeft, Check, AlertCircle, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
+import { cn, fmt, parseMoney, sumMoney } from "@/lib/utils";
 
 const ACCOUNT_TYPE_STEPS = [
   { type: "asset", label: "Assets", icon: "💰", description: "Cash, accounts receivable, equipment, vehicles, inventory — things you own", normalBalance: "debit" },
@@ -62,7 +62,7 @@ export default function OpeningBalances() {
   const allEntries = useMemo(() => {
     const lines: AccountBalance[] = [];
     accounts.forEach((a) => {
-      const bal = parseFloat(balances[a.id] || "0");
+      const bal = parseMoney(balances[a.id] || "0");
       if (bal > 0) {
         lines.push({
           accountId: a.id,
@@ -77,11 +77,11 @@ export default function OpeningBalances() {
   }, [accounts, balances]);
 
   const totalDebits = useMemo(
-    () => allEntries.filter((e) => e.normalBalance === "debit").reduce((s, e) => s + parseFloat(e.balance), 0),
+    () => sumMoney(allEntries.filter((e) => e.normalBalance === "debit").map((e) => parseMoney(e.balance))),
     [allEntries]
   );
   const totalCredits = useMemo(
-    () => allEntries.filter((e) => e.normalBalance === "credit").reduce((s, e) => s + parseFloat(e.balance), 0),
+    () => sumMoney(allEntries.filter((e) => e.normalBalance === "credit").map((e) => parseMoney(e.balance))),
     [allEntries]
   );
   const difference = totalDebits - totalCredits;
@@ -111,8 +111,8 @@ export default function OpeningBalances() {
       const lineInserts = allEntries.map((e) => ({
         journal_entry_id: entry.id,
         account_id: e.accountId,
-        debit: e.normalBalance === "debit" ? parseFloat(e.balance) : 0,
-        credit: e.normalBalance === "credit" ? parseFloat(e.balance) : 0,
+        debit: e.normalBalance === "debit" ? parseMoney(e.balance) : 0,
+        credit: e.normalBalance === "credit" ? parseMoney(e.balance) : 0,
         description: "Opening balance",
       }));
 
@@ -214,7 +214,7 @@ export default function OpeningBalances() {
       {step >= 1 && step <= 5 && (() => {
         const typeStep = ACCOUNT_TYPE_STEPS[step - 1];
         const typeAccounts = accountsByType[typeStep.type] || [];
-        const typeTotal = typeAccounts.reduce((s, a) => s + (parseFloat(balances[a.id] || "0") || 0), 0);
+        const typeTotal = sumMoney(typeAccounts.map((a) => parseMoney(balances[a.id] || "0")));
 
         return (
           <div className="glass-card rounded-xl overflow-hidden">
@@ -304,10 +304,10 @@ export default function OpeningBalances() {
                           {e.accountName}
                         </td>
                         <td className="px-4 py-2 text-right font-mono text-card-foreground">
-                          {e.normalBalance === "debit" ? `$${parseFloat(e.balance).toLocaleString(undefined, { minimumFractionDigits: 2 })}` : ""}
+                          {e.normalBalance === "debit" ? fmt(parseMoney(e.balance)) : ""}
                         </td>
                         <td className="px-4 py-2 text-right font-mono text-card-foreground">
-                          {e.normalBalance === "credit" ? `$${parseFloat(e.balance).toLocaleString(undefined, { minimumFractionDigits: 2 })}` : ""}
+                          {e.normalBalance === "credit" ? fmt(parseMoney(e.balance)) : ""}
                         </td>
                       </tr>
                     ))
