@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { fetchAll } from "@/lib/fetchAll";
 import { calculatePayroll } from "@/lib/payrollCalc";
 import { parseMoney, roundMoney, fmt } from "@/lib/utils";
+import type { PayrollRunWithEntries, PayrollRunWithEntriesBasic } from "@/integrations/supabase/helpers";
 import PageHeader from "@/components/PageHeader";
 import StatCard from "@/components/StatCard";
 import DeleteConfirmDialog from "@/components/DeleteConfirmDialog";
@@ -60,7 +61,7 @@ export default function Payroll() {
 
   // History drill-down state
   const [expandedRunId, setExpandedRunId] = useState<string | null>(null);
-  const [historyStubsRun, setHistoryStubsRun] = useState<any | null>(null);
+  const [historyStubsRun, setHistoryStubsRun] = useState<PayrollRunWithEntries | null>(null);
   const [voidRunId, setVoidRunId] = useState<string | null>(null);
   const [deleteDraftId, setDeleteDraftId] = useState<string | null>(null);
 
@@ -84,16 +85,16 @@ export default function Payroll() {
     },
   });
 
-  const { data: allRuns = [] } = useQuery({
+  const { data: allRuns = [] } = useQuery<PayrollRunWithEntries[]>({
     queryKey: ["all-payroll-runs"],
     queryFn: () => fetchAll((sb) =>
       sb.from("payroll_runs")
         .select("*, payroll_entries(*, employees(name, role, employee_number))")
         .order("period_end", { ascending: false })
-    ),
+    ) as Promise<PayrollRunWithEntries[]>,
   });
 
-  const latestRun = allRuns.find((run: any) => !["reversal", "voided"].includes(run.status)) ?? null;
+  const latestRun = allRuns.find((run) => !["reversal", "voided"].includes(run.status)) ?? null;
 
   const { data: ytdByEmployee } = useQuery({
     queryKey: ["ytd-totals"],
@@ -103,10 +104,10 @@ export default function Payroll() {
         sb.from("payroll_runs")
           .select("id, payroll_entries(employee_id, hours_worked, gross_pay, fed_tax, state_tax, ss_tax, medicare_tax, sdi_tax, fica, net_pay)")
           .gte("period_start", yearStart)
-      );
+      ) as PayrollRunWithEntriesBasic[];
       const ytd: Record<string, YtdTotals> = {};
       for (const run of runs || []) {
-        for (const e of (run as any).payroll_entries || []) {
+        for (const e of run.payroll_entries || []) {
           if (!ytd[e.employee_id]) ytd[e.employee_id] = { gross: 0, fed_tax: 0, state_tax: 0, ss_tax: 0, medicare_tax: 0, sdi_tax: 0, fica: 0, net: 0, hours: 0 };
           ytd[e.employee_id].gross += e.gross_pay || 0;
           ytd[e.employee_id].fed_tax += e.fed_tax || 0;
@@ -396,7 +397,7 @@ export default function Payroll() {
       // Get the original run's entries
       const originalRun = allRuns.find((r: any) => r.id === runId);
       if (!originalRun) throw new Error("Run not found");
-      const origEntries = (originalRun as any).payroll_entries || [];
+      const origEntries = originalRun.payroll_entries || [];
       if (origEntries.length === 0) throw new Error("No entries to void");
 
       // Create a reversing payroll run with negative amounts
@@ -458,7 +459,7 @@ export default function Payroll() {
     onError: (err: Error) => toast.error(err.message),
   });
 
-  const entries = (latestRun as any)?.payroll_entries || [];
+  const entries = latestRun?.payroll_entries || [];
 
   const totalGross = entries.reduce((s: number, e: any) => s + (e.gross_pay || 0), 0);
   const totalNet = entries.reduce((s: number, e: any) => s + (e.net_pay || 0), 0);
@@ -749,7 +750,7 @@ export default function Payroll() {
                 {allRuns.map((run: any) => {
                   const t = getRunTotals(run);
                   const isExpanded = expandedRunId === run.id;
-                  const runEntries = (run as any).payroll_entries || [];
+                  const runEntries = run.payroll_entries || [];
 
                   return (
                     <div key={run.id}>
@@ -860,7 +861,7 @@ export default function Payroll() {
         <PayStubsDialog
           open={!!historyStubsRun}
           onOpenChange={(open) => { if (!open) setHistoryStubsRun(null); }}
-          entries={(historyStubsRun as any).payroll_entries || []}
+          entries={historyStubsRun.payroll_entries || []}
           periodStart={historyStubsRun.period_start || ""}
           periodEnd={historyStubsRun.period_end || ""}
           runDate={historyStubsRun.run_date || ""}

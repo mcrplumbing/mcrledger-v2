@@ -38,7 +38,15 @@ export type PayrollEntryWithRun = PayrollEntry & {
   payroll_runs: Pick<PayrollRun, "period_end"> | null;
 };
 
+export type PayrollEntryWithEmployeeDetail = PayrollEntry & {
+  employees: Pick<Employee, "name" | "role" | "employee_number"> | null;
+};
+
 export type PayrollRunWithEntries = PayrollRun & {
+  payroll_entries: PayrollEntryWithEmployeeDetail[];
+};
+
+export type PayrollRunWithEntriesBasic = PayrollRun & {
   payroll_entries: PayrollEntry[];
 };
 
