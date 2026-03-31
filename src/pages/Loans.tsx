@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import PageHeader from "@/components/PageHeader";
+import { parseMoney } from "@/lib/utils";
 import DeleteConfirmDialog from "@/components/DeleteConfirmDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,8 +37,8 @@ export default function Loans() {
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      const principal = parseFloat(form.principal) || 0;
-      const row = { name: form.name, type: form.type, principal, balance: editingId ? undefined : principal, rate: parseFloat(form.rate) || 0, payment: parseFloat(form.payment) || 0, next_due: form.next_due || null };
+      const principal = parseMoney(form.principal);
+      const row = { name: form.name, type: form.type, principal, balance: editingId ? undefined : principal, rate: parseMoney(form.rate), payment: parseMoney(form.payment), next_due: form.next_due || null };
       if (editingId) {
         const { balance, ...updateRow } = row as any;
         const { error } = await supabase.from("loans").update(updateRow).eq("id", editingId);
