@@ -49,7 +49,7 @@ export default function Login() {
           <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-xl bg-primary">
             <BookOpen className="h-6 w-6 text-primary-foreground" />
           </div>
-          <CardTitle className="text-2xl font-bold">LedgerPro</CardTitle>
+          <CardTitle className="text-2xl font-bold">MCR Books</CardTitle>
           <CardDescription>
             {mode === "login" ? "Sign in to your account" : "Reset your password"}
           </CardDescription>

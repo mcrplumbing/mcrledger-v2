@@ -106,7 +106,7 @@ export default function AppSidebar() {
         </div>
         {!collapsed && (
           <span className="font-display font-bold text-sidebar-primary-foreground text-lg tracking-tight">
-            LedgerPro
+            MCR Books
           </span>
         )}
       </div>

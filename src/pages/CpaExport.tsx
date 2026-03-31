@@ -160,7 +160,7 @@ export default function CpaExport() {
       lines.push("ENDTRNS");
     });
 
-    downloadFile(lines.join("\n"), `ledgerpro-${year}.iif`, "text/plain");
+    downloadFile(lines.join("\n"), `mcrbooks-${year}.iif`, "text/plain");
     toast.success("IIF file exported for QuickBooks Desktop");
   };
 
@@ -228,7 +228,7 @@ ENCODING:USASCII
 </BANKMSGSRSV1>
 </OFX>`;
 
-    downloadFile(ofx, `ledgerpro-${year}.qbo`, "application/x-ofx");
+    downloadFile(ofx, `mcrbooks-${year}.qbo`, "application/x-ofx");
     toast.success("QBO file exported for QuickBooks Online");
   };
 
