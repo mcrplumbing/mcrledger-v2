@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, Trash2, Upload, Loader2, FileText, Download } from "lucide-react";
+import { parseMoney } from "@/lib/utils";
 import { toast } from "sonner";
 import { useMutation as useRqMutation } from "@tanstack/react-query";
 import * as pdfjsLib from "pdfjs-dist";
@@ -175,10 +176,10 @@ export default function TaxSettings() {
     mutationFn: async () => {
       const { error } = await supabase.from("tax_settings").insert({
         tax_type: form.tax_type,
-        bracket_min: parseFloat(form.bracket_min) || 0,
-        bracket_max: form.bracket_max ? parseFloat(form.bracket_max) : null,
+        bracket_min: parseMoney(form.bracket_min),
+        bracket_max: form.bracket_max ? parseMoney(form.bracket_max) : null,
         rate: parseFloat(form.rate) || 0,
-        withholding_amount: parseFloat(form.withholding_amount) || 0,
+        withholding_amount: parseMoney(form.withholding_amount),
         filing_status: form.filing_status,
         effective_year: parseInt(form.effective_year) || 2026,
         description: form.description,
