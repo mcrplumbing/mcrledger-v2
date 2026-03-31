@@ -14,7 +14,7 @@ import JobSelect from "@/components/JobSelect";
 import VendorSelect from "@/components/VendorSelect";
 import { Plus, Search, Pencil, Trash2, CreditCard, Upload } from "lucide-react";
 import BulkApImportDialog from "@/components/BulkApImportDialog";
-import { cn } from "@/lib/utils";
+import { cn, parseMoney } from "@/lib/utils";
 import { fetchAll } from "@/lib/fetchAll";
 import { toast } from "sonner";
 
@@ -77,7 +77,7 @@ export default function Vendors() {
 
   const saveInvoice = useMutation({
     mutationFn: async () => {
-      const row = { vendor_id: invoiceForm.vendor_id, invoice_no: invoiceForm.invoice_no, amount: parseFloat(invoiceForm.amount) || 0, date: invoiceForm.date, due_date: invoiceForm.due_date || null, job_id: invoiceForm.job_id || null };
+      const row = { vendor_id: invoiceForm.vendor_id, invoice_no: invoiceForm.invoice_no, amount: parseMoney(invoiceForm.amount), date: invoiceForm.date, due_date: invoiceForm.due_date || null, job_id: invoiceForm.job_id || null };
       if (editingInvoiceId) {
         const { error } = await supabase.from("vendor_invoices").update(row).eq("id", editingInvoiceId);
         if (error) throw error;
