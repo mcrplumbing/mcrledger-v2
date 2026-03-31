@@ -50,8 +50,13 @@ export type PayrollRunWithEntriesBasic = PayrollRun & {
   payroll_entries: PayrollEntry[];
 };
 
+export type JournalEntryLineWithRelations = JournalEntryLine & {
+  gl_accounts: Pick<GlAccount, "account_number" | "name"> | null;
+  jobs: Pick<Job, "job_number" | "name"> | null;
+};
+
 export type JournalEntryWithLines = JournalEntry & {
-  journal_entry_lines: JournalEntryLine[];
+  journal_entry_lines: JournalEntryLineWithRelations[];
 };
 
 export type JobInvoiceWithJob = JobInvoice & {

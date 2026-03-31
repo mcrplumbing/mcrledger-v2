@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import type { JournalEntryWithLines } from "@/integrations/supabase/helpers";
 import { fetchAll } from "@/lib/fetchAll";
 import PageHeader from "@/components/PageHeader";
 import DeleteConfirmDialog from "@/components/DeleteConfirmDialog";
@@ -31,13 +32,13 @@ export default function JournalEntries() {
   const [form, setForm] = useState({ entry_number: "", date: new Date().toISOString().split("T")[0], description: "" });
   const [lines, setLines] = useState<Line[]>([emptyLine(), emptyLine()]);
 
-  const { data: entries = [], isLoading } = useQuery({
+  const { data: entries = [], isLoading } = useQuery<JournalEntryWithLines[]>({
     queryKey: ["journal-entries"],
     queryFn: () => fetchAll((sb) =>
       sb.from("journal_entries")
         .select("*, journal_entry_lines(*, gl_accounts(account_number, name), jobs(job_number, name))")
         .order("date", { ascending: false })
-    ),
+    ) as Promise<JournalEntryWithLines[]>,
   });
 
   const { data: accounts = [] } = useQuery({
@@ -199,7 +200,7 @@ export default function JournalEntries() {
           {(() => {
             const entry = entries.find((e) => e.id === detailEntry);
             if (!entry) return null;
-            const entryLines = (entry as any).journal_entry_lines || [];
+            const entryLines = entry.journal_entry_lines || [];
             return (
               <div className="space-y-4">
                 <div className="grid grid-cols-3 gap-4 text-sm">
@@ -256,7 +257,7 @@ export default function JournalEntries() {
             ) : entries.length === 0 ? (
               <tr><td colSpan={6} className="px-6 py-8 text-center text-muted-foreground">No journal entries yet.</td></tr>
             ) : entries.map((e) => {
-              const entryLines = (e as any).journal_entry_lines || [];
+              const entryLines = e.journal_entry_lines || [];
               const total = entryLines.reduce((s: number, l: any) => s + (l.debit || 0), 0);
               return (
                 <tr key={e.id} className="table-row-hover border-b border-border/50">
