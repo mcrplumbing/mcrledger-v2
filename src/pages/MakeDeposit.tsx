@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DollarSign, Landmark } from "lucide-react";
+import { sumMoney } from "@/lib/utils";
 import { toast } from "sonner";
 
 export default function MakeDeposit() {
@@ -43,9 +44,9 @@ export default function MakeDeposit() {
   const effectiveBankId = bankAccountId || (bankAccounts.length > 0 ? bankAccounts[0].id : "");
 
   const selectedTotal = useMemo(() => {
-    return payments
-      .filter((p) => selectedIds.has(p.id))
-      .reduce((sum, p) => sum + (p.amount || 0), 0);
+    return sumMoney(
+      payments.filter((p) => selectedIds.has(p.id)).map((p) => p.amount || 0)
+    );
   }, [payments, selectedIds]);
 
   const togglePayment = (id: string) => {
@@ -71,7 +72,7 @@ export default function MakeDeposit() {
       if (!effectiveBankId) throw new Error("Select a bank account");
 
       const selected = payments.filter((p) => selectedIds.has(p.id));
-      const total = selected.reduce((s, p) => s + (p.amount || 0), 0);
+      const total = sumMoney(selected.map((p) => p.amount || 0));
       const clients = [...new Set(selected.map((p) => p.client))].join(", ");
       const refs = selected.map((p) => p.reference_no).filter(Boolean).join(", ");
 
