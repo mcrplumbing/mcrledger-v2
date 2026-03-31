@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import type { VendorInvoiceWithRelations } from "@/integrations/supabase/helpers";
 import PageHeader from "@/components/PageHeader";
 import DeleteConfirmDialog from "@/components/DeleteConfirmDialog";
 import { Button } from "@/components/ui/button";
@@ -40,7 +41,7 @@ export default function Vendors() {
 
   const { data: invoices = [] } = useQuery({
     queryKey: ["vendor-invoices"],
-    queryFn: async () => fetchAll((sb) => sb.from("vendor_invoices").select("*, vendors(name), jobs(job_number)").order("date", { ascending: false })),
+    queryFn: async () => fetchAll((sb) => sb.from("vendor_invoices").select("*, vendors(name), jobs(job_number)").order("date", { ascending: false })) as Promise<VendorInvoiceWithRelations[]>,
   });
 
   const { data: bankAccounts = [] } = useQuery({
@@ -142,7 +143,7 @@ export default function Vendors() {
       if (billsToPay.length === 0) throw new Error("No open balances to pay");
 
       const totalPayment = billsToPay.reduce((sum, inv) => sum + (inv.amount - inv.paid), 0);
-      const vendorNames = [...new Set(billsToPay.map(inv => (inv as any).vendors?.name || "Vendor"))];
+      const vendorNames = [...new Set(billsToPay.map(inv => inv.vendors?.name || "Vendor"))];
       const invoiceNos = billsToPay.map(inv => inv.invoice_no).filter(Boolean);
       const payee = vendorNames.join(", ");
       const memo = invoiceNos.length === 1
@@ -294,7 +295,7 @@ export default function Vendors() {
                     {openBills.map(inv => (
                       <tr key={inv.id} className="border-b border-border/50">
                         <td className="px-3 py-2"><Checkbox checked={selectedBills.has(inv.id)} onCheckedChange={() => toggleBill(inv.id)} /></td>
-                        <td className="px-3 py-2 font-medium text-card-foreground">{(inv as any).vendors?.name}</td>
+                        <td className="px-3 py-2 font-medium text-card-foreground">{inv.vendors?.name}</td>
                         <td className="px-3 py-2 font-mono text-xs">{inv.invoice_no}</td>
                         <td className="px-3 py-2 text-muted-foreground">{inv.due_date || "—"}</td>
                         <td className="px-3 py-2 text-right font-mono text-destructive">${(inv.amount - inv.paid).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
@@ -355,21 +356,21 @@ export default function Vendors() {
                   if (!search) return true;
                   const s = search.toLowerCase();
                   return inv.invoice_no.toLowerCase().includes(s) ||
-                    (inv as any).vendors?.name?.toLowerCase().includes(s) ||
-                    (inv as any).jobs?.job_number?.toLowerCase().includes(s);
+                    inv.vendors?.name?.toLowerCase().includes(s) ||
+                    inv.jobs?.job_number?.toLowerCase().includes(s);
                 }).length === 0 ? (
                   <tr><td colSpan={10} className="px-6 py-8 text-center text-muted-foreground">{search ? "No matching invoices." : "No invoices yet."}</td></tr>
                 ) : invoices.filter(inv => {
                   if (!search) return true;
                   const s = search.toLowerCase();
                   return inv.invoice_no.toLowerCase().includes(s) ||
-                    (inv as any).vendors?.name?.toLowerCase().includes(s) ||
-                    (inv as any).jobs?.job_number?.toLowerCase().includes(s);
+                    inv.vendors?.name?.toLowerCase().includes(s) ||
+                    inv.jobs?.job_number?.toLowerCase().includes(s);
                 }).map((inv) => (
                   <tr key={inv.id} className="table-row-hover border-b border-border/50">
                     <td className="px-6 py-3 font-mono text-xs text-card-foreground">{inv.invoice_no}</td>
-                    <td className="px-6 py-3 font-medium text-card-foreground">{(inv as any).vendors?.name}</td>
-                    <td className="px-6 py-3 font-mono text-xs text-primary">{(inv as any).jobs?.job_number || "—"}</td>
+                    <td className="px-6 py-3 font-medium text-card-foreground">{inv.vendors?.name}</td>
+                    <td className="px-6 py-3 font-mono text-xs text-primary">{inv.jobs?.job_number || "—"}</td>
                     <td className="px-6 py-3 text-muted-foreground">{inv.date}</td>
                     <td className="px-6 py-3 text-muted-foreground">{inv.due_date || "—"}</td>
                     <td className="px-6 py-3">
@@ -432,9 +433,9 @@ export default function Vendors() {
                     <td className="px-6 py-3 text-muted-foreground">{v.contact}</td>
                     <td className="px-6 py-3 text-muted-foreground">{v.phone}</td>
                     <td className="px-6 py-3 text-muted-foreground">{v.email}</td>
-                    <td className="px-6 py-3 font-mono text-xs text-muted-foreground">{(v as any).tax_id || "—"}</td>
+                    <td className="px-6 py-3 font-mono text-xs text-muted-foreground">{v.tax_id || "—"}</td>
                     <td className="px-6 py-3 text-center">
-                      {(v as any).is_1099 && <span className="px-2 py-0.5 rounded-full text-xs bg-warning/10 text-warning font-medium">1099</span>}
+                      {v.is_1099 && <span className="px-2 py-0.5 rounded-full text-xs bg-warning/10 text-warning font-medium">1099</span>}
                     </td>
                     <td className="px-6 py-3 text-center">
                       <div className="flex items-center justify-center gap-1">
