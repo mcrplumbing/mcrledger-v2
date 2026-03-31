@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import PageHeader from "@/components/PageHeader";
@@ -48,11 +48,16 @@ export default function Checkbook() {
     queryFn: async () => {
       const { data, error } = await supabase.from("bank_accounts").select("*").eq("active", true).order("name");
       if (error) throw error;
-      // Auto-select if only one account
-      if (data && data.length === 1 && selectedAccount === "all") setSelectedAccount(data[0].id);
       return data;
     },
   });
+
+  // Auto-select if only one bank account
+  useEffect(() => {
+    if (bankAccounts.length === 1 && selectedAccount === "all") {
+      setSelectedAccount(bankAccounts[0].id);
+    }
+  }, [bankAccounts, selectedAccount]);
 
   const { data: glAccounts = [] } = useQuery({
     queryKey: ["gl-accounts"],
