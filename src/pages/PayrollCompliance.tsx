@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { cn } from "@/lib/utils";
+import { cn, fmt, roundMoney, sumMoney } from "@/lib/utils";
 import { Download, FileText } from "lucide-react";
 import { toast } from "sonner";
 
@@ -21,7 +21,6 @@ const QUARTERS = [
   { label: "Q4 (Oct–Dec)", start: "10-01", end: "12-31" },
 ];
 
-const fmt = (n: number) => `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 function downloadCSV(filename: string, headers: string[], rows: string[][]) {
   const csv = [headers.join(","), ...rows.map((r) => r.map((c) => `"${c}"`).join(","))].join("\n");
@@ -92,15 +91,15 @@ export default function PayrollCompliance() {
 
   // ===================== 941 =====================
   const q941Entries = filterEntries(Number(quarter));
-  const totalWages941 = q941Entries.reduce((s, e) => s + (e.gross_pay || 0), 0);
-  const totalFedWithheld = q941Entries.reduce((s, e) => s + (e.fed_tax || 0), 0);
-  const totalFica = q941Entries.reduce((s, e) => s + (e.fica || 0), 0);
+  const totalWages941 = sumMoney(q941Entries.map((e) => e.gross_pay || 0));
+  const totalFedWithheld = sumMoney(q941Entries.map((e) => e.fed_tax || 0));
+  const totalFica = sumMoney(q941Entries.map((e) => e.fica || 0));
   // Employer match for SS + Medicare
   const totalSSWages = totalWages941; // simplified — no wage base cap here for 941
-  const employerSS = totalSSWages * SS_RATE;
-  const employerMedicare = totalWages941 * MEDICARE_RATE;
-  const totalSSTax = totalFica + employerSS + employerMedicare; // employee + employer portions
-  const totalTaxLiability941 = totalFedWithheld + totalSSTax;
+  const employerSS = roundMoney(totalSSWages * SS_RATE);
+  const employerMedicare = roundMoney(totalWages941 * MEDICARE_RATE);
+  const totalSSTax = roundMoney(totalFica + employerSS + employerMedicare); // employee + employer portions
+  const totalTaxLiability941 = roundMoney(totalFedWithheld + totalSSTax);
 
   // ===================== 940 =====================
   const yearEntries = filterEntries();
@@ -112,7 +111,7 @@ export default function PayrollCompliance() {
       if (!map[e.employee_id]) {
         map[e.employee_id] = { name: empName, empNo, totalWages: 0, futaWages: 0 };
       }
-      map[e.employee_id].totalWages += e.gross_pay || 0;
+      map[e.employee_id].totalWages = roundMoney(map[e.employee_id].totalWages + (e.gross_pay || 0));
     });
     Object.values(map).forEach((emp) => {
       emp.futaWages = Math.min(emp.totalWages, FUTA_WAGE_BASE);
@@ -120,8 +119,8 @@ export default function PayrollCompliance() {
     return Object.values(map);
   }, [yearEntries]);
 
-  const totalFutaWages = futaByEmployee.reduce((s, e) => s + e.futaWages, 0);
-  const totalFutaTax = totalFutaWages * FUTA_RATE;
+  const totalFutaWages = sumMoney(futaByEmployee.map((e) => e.futaWages));
+  const totalFutaTax = roundMoney(totalFutaWages * FUTA_RATE);
 
   // ===================== W-2 =====================
   const w2Data = useMemo(() => {
@@ -141,14 +140,14 @@ export default function PayrollCompliance() {
         };
       }
       const m = map[e.employee_id];
-      m.grossWages += e.gross_pay || 0;
-      m.fedWithheld += e.fed_tax || 0;
-      m.ssTax += (e.fica || 0) * (SS_RATE / (SS_RATE + MEDICARE_RATE)); // approximate split
-      m.medicareTax += (e.fica || 0) * (MEDICARE_RATE / (SS_RATE + MEDICARE_RATE));
-      m.ssWages += e.gross_pay || 0;
-      m.medicareWages += e.gross_pay || 0;
-      m.stateWages += e.gross_pay || 0;
-      m.stateWithheld += e.state_tax || 0;
+      m.grossWages = roundMoney(m.grossWages + (e.gross_pay || 0));
+      m.fedWithheld = roundMoney(m.fedWithheld + (e.fed_tax || 0));
+      m.ssTax = roundMoney(m.ssTax + (e.ss_tax || 0));
+      m.medicareTax = roundMoney(m.medicareTax + (e.medicare_tax || 0));
+      m.ssWages = roundMoney(m.ssWages + (e.gross_pay || 0));
+      m.medicareWages = roundMoney(m.medicareWages + (e.gross_pay || 0));
+      m.stateWages = roundMoney(m.stateWages + (e.gross_pay || 0));
+      m.stateWithheld = roundMoney(m.stateWithheld + (e.state_tax || 0));
     });
     return Object.values(map);
   }, [yearEntries]);
@@ -241,9 +240,9 @@ export default function PayrollCompliance() {
               <LineItem line="3" label="Federal income tax withheld" amount={totalFedWithheld} />
               <div className="py-2 mt-2"><span className="text-xs font-medium text-muted-foreground">SOCIAL SECURITY & MEDICARE</span></div>
               <LineItem line="5a" label="Taxable social security wages" amount={totalSSWages} />
-              <LineItem line="5a×" label="Social security tax (employee + employer)" amount={totalSSWages * SS_RATE * 2} />
+              <LineItem line="5a×" label="Social security tax (employee + employer)" amount={roundMoney(totalSSWages * SS_RATE * 2)} />
               <LineItem line="5c" label="Taxable Medicare wages & tips" amount={totalWages941} />
-              <LineItem line="5c×" label="Medicare tax (employee + employer)" amount={totalWages941 * MEDICARE_RATE * 2} />
+              <LineItem line="5c×" label="Medicare tax (employee + employer)" amount={roundMoney(totalWages941 * MEDICARE_RATE * 2)} />
               <LineItem line="5e" label="Total social security and Medicare taxes" amount={totalSSTax} bold />
               <LineItem line="6" label="Total taxes before adjustments (line 3 + 5e)" amount={totalTaxLiability941} bold />
               <div className="py-2 mt-2"><span className="text-xs font-medium text-muted-foreground">DEPOSITS</span></div>
@@ -263,7 +262,7 @@ export default function PayrollCompliance() {
               Form 940 — Employer's Annual Federal Unemployment (FUTA) Tax Return — {year}
             </h3>
             <div className="max-w-2xl space-y-0 mb-6">
-              <LineItem line="3" label="Total payments to all employees" amount={yearEntries.reduce((s, e) => s + (e.gross_pay || 0), 0)} />
+              <LineItem line="3" label="Total payments to all employees" amount={sumMoney(yearEntries.map((e) => e.gross_pay || 0))} />
               <LineItem line="7" label="Total taxable FUTA wages" amount={totalFutaWages} />
               <LineItem line="8" label={`FUTA tax before adjustments (${(FUTA_RATE * 100).toFixed(1)}%)`} amount={totalFutaTax} bold />
               <LineItem line="14" label="Total FUTA tax after adjustments" amount={totalFutaTax} bold />
@@ -288,14 +287,14 @@ export default function PayrollCompliance() {
                       <td className="px-6 py-3 font-medium text-card-foreground">{emp.empNo} — {emp.name}</td>
                       <td className="px-6 py-3 text-right font-mono text-card-foreground">{fmt(emp.totalWages)}</td>
                       <td className="px-6 py-3 text-right font-mono text-card-foreground">{fmt(emp.futaWages)}</td>
-                      <td className="px-6 py-3 text-right font-mono text-card-foreground">{fmt(emp.futaWages * FUTA_RATE)}</td>
+                      <td className="px-6 py-3 text-right font-mono text-card-foreground">{fmt(roundMoney(emp.futaWages * FUTA_RATE))}</td>
                     </tr>
                   ))}
                 </tbody>
                 <tfoot>
                   <tr className="bg-muted/20 font-bold">
                     <td className="px-6 py-3 text-card-foreground">Totals</td>
-                    <td className="px-6 py-3 text-right font-mono text-card-foreground">{fmt(futaByEmployee.reduce((s, e) => s + e.totalWages, 0))}</td>
+                    <td className="px-6 py-3 text-right font-mono text-card-foreground">{fmt(sumMoney(futaByEmployee.map((e) => e.totalWages)))}</td>
                     <td className="px-6 py-3 text-right font-mono text-card-foreground">{fmt(totalFutaWages)}</td>
                     <td className="px-6 py-3 text-right font-mono font-bold text-card-foreground">{fmt(totalFutaTax)}</td>
                   </tr>
@@ -331,7 +330,7 @@ export default function PayrollCompliance() {
                 {w2Data.length === 0 ? (
                   <tr><td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">No payroll data for {year}.</td></tr>
                 ) : w2Data.map((w, i) => {
-                  const netPay = w.grossWages - w.fedWithheld - w.ssTax - w.medicareTax - w.stateWithheld;
+                  const netPay = roundMoney(w.grossWages - w.fedWithheld - w.ssTax - w.medicareTax - w.stateWithheld);
                   return (
                     <tr key={i} className="border-b border-border/50">
                       <td className="px-4 py-3 font-mono text-xs text-card-foreground">{w.empNo}</td>
@@ -350,13 +349,13 @@ export default function PayrollCompliance() {
                 <tfoot>
                   <tr className="bg-muted/20 font-bold">
                     <td colSpan={2} className="px-4 py-3 text-card-foreground">Totals</td>
-                    <td className="px-4 py-3 text-right font-mono text-card-foreground">{fmt(w2Data.reduce((s, w) => s + w.grossWages, 0))}</td>
-                    <td className="px-4 py-3 text-right font-mono text-destructive">{fmt(w2Data.reduce((s, w) => s + w.fedWithheld, 0))}</td>
-                    <td className="px-4 py-3 text-right font-mono text-destructive">{fmt(w2Data.reduce((s, w) => s + w.ssTax, 0))}</td>
-                    <td className="px-4 py-3 text-right font-mono text-destructive">{fmt(w2Data.reduce((s, w) => s + w.medicareTax, 0))}</td>
-                    <td className="px-4 py-3 text-right font-mono text-destructive">{fmt(w2Data.reduce((s, w) => s + w.stateWithheld, 0))}</td>
+                    <td className="px-4 py-3 text-right font-mono text-card-foreground">{fmt(sumMoney(w2Data.map((w) => w.grossWages)))}</td>
+                    <td className="px-4 py-3 text-right font-mono text-destructive">{fmt(sumMoney(w2Data.map((w) => w.fedWithheld)))}</td>
+                    <td className="px-4 py-3 text-right font-mono text-destructive">{fmt(sumMoney(w2Data.map((w) => w.ssTax)))}</td>
+                    <td className="px-4 py-3 text-right font-mono text-destructive">{fmt(sumMoney(w2Data.map((w) => w.medicareTax)))}</td>
+                    <td className="px-4 py-3 text-right font-mono text-destructive">{fmt(sumMoney(w2Data.map((w) => w.stateWithheld)))}</td>
                     <td className="px-4 py-3 text-right font-mono text-success">
-                      {fmt(w2Data.reduce((s, w) => s + w.grossWages - w.fedWithheld - w.ssTax - w.medicareTax - w.stateWithheld, 0))}
+                      {fmt(sumMoney(w2Data.map((w) => roundMoney(w.grossWages - w.fedWithheld - w.ssTax - w.medicareTax - w.stateWithheld))))}
                     </td>
                   </tr>
                 </tfoot>
