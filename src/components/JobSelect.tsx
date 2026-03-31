@@ -9,7 +9,7 @@ import ClientSelect from "@/components/ClientSelect";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Plus, ChevronsUpDown, Check } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, parseMoney } from "@/lib/utils";
 import { toast } from "sonner";
 
 interface JobSelectProps {
@@ -44,7 +44,7 @@ export default function JobSelect({ value, onValueChange, placeholder = "Search 
         job_number: form.job_number,
         name: form.name,
         client: form.client,
-        budget: parseFloat(form.budget) || 0,
+        budget: parseMoney(form.budget),
       }).select("id").single();
       if (error) throw error;
       return data;
