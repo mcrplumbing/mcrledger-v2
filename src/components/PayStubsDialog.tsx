@@ -2,6 +2,7 @@ import { useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Printer } from "lucide-react";
+import { fmt } from "@/lib/utils";
 
 interface PayStubEntry {
   id: string;
@@ -40,9 +41,6 @@ interface PayStubsDialogProps {
   companyName?: string;
   ytdByEmployee?: Record<string, YtdTotals>;
 }
-
-const fmt = (n: number) =>
-  `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 export default function PayStubsDialog({
   open,
