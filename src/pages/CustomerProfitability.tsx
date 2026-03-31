@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import PageHeader from "@/components/PageHeader";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { cn } from "@/lib/utils";
+import { cn, fmt, roundMoney, sumMoney } from "@/lib/utils";
 import { fetchAll } from "@/lib/fetchAll";
 
 const EMPLOYER_SS_RATE = 0.062;
@@ -53,7 +53,6 @@ export default function CustomerProfitability() {
     ),
   });
 
-  const fmt = (n: number) => `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
   const inRange = (d: string | undefined) => {
     if (!d) return true;
@@ -76,62 +75,57 @@ export default function CustomerProfitability() {
       entry.budget += job.budget || 0;
 
       // Revenue from AR invoices for this job
-      const jobRevenue = invoices
+      const jobRevenue = sumMoney(invoices
         .filter((i: any) => i.job_id === job.id && inRange(i.date))
-        .reduce((s: number, i: any) => s + (i.amount || 0), 0);
-      entry.revenue += jobRevenue;
+        .map((i: any) => i.amount || 0));
+      entry.revenue = roundMoney(entry.revenue + jobRevenue);
 
       // Labor from timesheets
-      const jobLabor = timesheetRows
+      const jobLabor = sumMoney(timesheetRows
         .filter((t: any) => t.job_id === job.id && inRange(t.date))
-        .reduce((s: number, t: any) => {
+        .map((t: any) => {
           const rate = t.employees?.rate || 0;
           const multiplier = t.pay_class === "double" ? 2 : t.pay_class === "overtime" ? 1.5 : 1;
-          return s + (t.hours || 0) * rate * multiplier * BURDEN_RATE;
-        }, 0);
-      entry.labor += jobLabor;
+          return roundMoney((t.hours || 0) * rate * multiplier * BURDEN_RATE);
+        }));
+      entry.labor = roundMoney(entry.labor + jobLabor);
 
       // Other expenses from transactions
-      const jobTxnExp = transactions
+      const jobTxnExp = sumMoney(transactions
         .filter((t: any) => t.job_id === job.id && inRange(t.date))
-        .reduce((s: number, t: any) => s + (t.payment || 0), 0);
+        .map((t: any) => t.payment || 0));
 
       // Vendor invoice expenses
-      const jobViExp = vendorInvoices
+      const jobViExp = sumMoney(vendorInvoices
         .filter((v: any) => v.job_id === job.id && inRange(v.date))
-        .reduce((s: number, v: any) => s + (v.amount || 0), 0);
+        .map((v: any) => v.amount || 0));
 
       // GL expense lines tagged to job (for opening balances etc.)
-      const jobGlExp = jeLinesRaw
+      const jobGlExp = sumMoney(jeLinesRaw
         .filter((l: any) =>
           l.job_id === job.id &&
           l.journal_entries?.status === "posted" &&
           l.gl_accounts?.account_type === "expense" &&
           inRange(l.journal_entries?.date)
         )
-        .reduce((s: number, l: any) => s + ((l.debit || 0) - (l.credit || 0)), 0);
+        .map((l: any) => roundMoney((l.debit || 0) - (l.credit || 0))));
 
       // Use the greater of direct sources vs GL to avoid double-counting
-      entry.otherExp += Math.max(jobTxnExp + jobViExp, jobGlExp);
+      entry.otherExp = roundMoney(entry.otherExp + Math.max(roundMoney(jobTxnExp + jobViExp), jobGlExp));
     }
 
     return Array.from(map.values()).sort((a, b) => a.client.localeCompare(b.client));
   }, [jobs, invoices, vendorInvoices, transactions, timesheetRows, jeLinesRaw, dateFrom, dateTo]);
 
-  const totals = useMemo(() => {
-    return customerData.reduce(
-      (acc, c) => ({
-        jobCount: acc.jobCount + c.jobCount,
-        budget: acc.budget + c.budget,
-        revenue: acc.revenue + c.revenue,
-        labor: acc.labor + c.labor,
-        otherExp: acc.otherExp + c.otherExp,
-      }),
-      { jobCount: 0, budget: 0, revenue: 0, labor: 0, otherExp: 0 }
-    );
-  }, [customerData]);
+  const totals = useMemo(() => ({
+    jobCount: customerData.reduce((s, c) => s + c.jobCount, 0),
+    budget: sumMoney(customerData.map((c) => c.budget)),
+    revenue: sumMoney(customerData.map((c) => c.revenue)),
+    labor: sumMoney(customerData.map((c) => c.labor)),
+    otherExp: sumMoney(customerData.map((c) => c.otherExp)),
+  }), [customerData]);
 
-  const totalProfit = totals.revenue - totals.labor - totals.otherExp;
+  const totalProfit = roundMoney(totals.revenue - totals.labor - totals.otherExp);
 
   return (
     <div className="p-8">
@@ -170,8 +164,8 @@ export default function CustomerProfitability() {
               ) : (
                 <>
                   {customerData.map((c) => {
-                    const totalCost = c.labor + c.otherExp;
-                    const profit = c.revenue - totalCost;
+                    const totalCost = roundMoney(c.labor + c.otherExp);
+                    const profit = roundMoney(c.revenue - totalCost);
                     const margin = c.revenue > 0 ? (profit / c.revenue) * 100 : 0;
                     return (
                       <tr key={c.client} className="table-row-hover border-b border-border/50">
@@ -194,7 +188,7 @@ export default function CustomerProfitability() {
                     <td className="px-6 py-3 text-right font-mono text-success">{fmt(totals.revenue)}</td>
                     <td className="px-6 py-3 text-right font-mono text-warning">{fmt(totals.labor)}</td>
                     <td className="px-6 py-3 text-right font-mono text-destructive">{fmt(totals.otherExp)}</td>
-                    <td className="px-6 py-3 text-right font-mono font-medium text-destructive">{fmt(totals.labor + totals.otherExp)}</td>
+                    <td className="px-6 py-3 text-right font-mono font-medium text-destructive">{fmt(roundMoney(totals.labor + totals.otherExp))}</td>
                     <td className={cn("px-6 py-3 text-right font-mono font-medium", totalProfit >= 0 ? "text-success" : "text-destructive")}>{fmt(totalProfit)}</td>
                     <td className="px-6 py-3 text-right font-mono text-muted-foreground">
                       {totals.revenue > 0 ? ((totalProfit / totals.revenue) * 100).toFixed(1) : "0.0"}%
