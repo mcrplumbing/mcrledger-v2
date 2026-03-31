@@ -10,7 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Upload, FileSpreadsheet, Check, AlertCircle, Trash2, Edit2 } from "lucide-react";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
+import { cn, parseMoney } from "@/lib/utils";
 
 type ImportTarget = "gl_accounts" | "vendors" | "jobs" | "job_invoices" | "vendor_invoices";
 
@@ -184,7 +184,7 @@ export default function CsvImport() {
           if (mc.dbColumn) {
             let val: any = getCellValue(rowIdx, mc.csvIndex);
             if (["budget", "amount", "paid", "rate", "cost"].includes(mc.dbColumn)) {
-              val = parseFloat(String(val).replace(/,/g, "")) || 0;
+              val = parseMoney(val);
             }
             if (mc.dbColumn === "active") {
               val = val.toLowerCase() !== "false" && val !== "0" && val.toLowerCase() !== "no";
