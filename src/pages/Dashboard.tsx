@@ -71,22 +71,16 @@ export default function Dashboard() {
   const currentYear = new Date().getFullYear();
   const taxTablesOutdated = PAYROLL_ENGINE_TAX_YEAR < currentYear;
   // ===== Data queries =====
+  // Scope transactions to current year (covers 6-month cash flow chart and YTD calculations)
+  const yearStart = `${currentYear}-01-01`;
   const { data: allTransactions = [] } = useQuery({
-    queryKey: ["dashboard-transactions"],
-    queryFn: async () => {
-      let allTxns: any[] = [];
-      let from = 0;
-      const pageSize = 1000;
-      while (true) {
-        const { data, error } = await supabase.from("transactions").select("*, jobs(job_number, name)").order("date", { ascending: false }).range(from, from + pageSize - 1);
-        if (error) throw error;
-        if (!data || data.length === 0) break;
-        allTxns = allTxns.concat(data);
-        if (data.length < pageSize) break;
-        from += pageSize;
-      }
-      return allTxns;
-    },
+    queryKey: ["dashboard-transactions", currentYear],
+    queryFn: async () => fetchAll((sb) =>
+      sb.from("transactions")
+        .select("*, jobs(job_number, name)")
+        .gte("date", yearStart)
+        .order("date", { ascending: false })
+    ),
   });
 
   const { data: jobs = [] } = useQuery({
