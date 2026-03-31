@@ -34,6 +34,10 @@ export type TimesheetWithEmployee = Timesheet & {
   employees: Pick<Employee, "rate" | "pay_type"> | null;
 };
 
+export type PayrollEntryWithRun = PayrollEntry & {
+  payroll_runs: Pick<PayrollRun, "period_end"> | null;
+};
+
 export type PayrollRunWithEntries = PayrollRun & {
   payroll_entries: PayrollEntry[];
 };

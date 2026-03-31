@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import type { TransactionWithJob, PayrollEntryWithRun, TimesheetWithEmployee } from "@/integrations/supabase/helpers";
 import PageHeader from "@/components/PageHeader";
 import { cn, roundMoney, sumMoney } from "@/lib/utils";
 import { fetchAll } from "@/lib/fetchAll";
@@ -73,14 +74,14 @@ export default function Dashboard() {
   // ===== Data queries =====
   // Scope transactions to current year (covers 6-month cash flow chart and YTD calculations)
   const yearStart = `${currentYear}-01-01`;
-  const { data: allTransactions = [] } = useQuery({
+  const { data: allTransactions = [] } = useQuery<TransactionWithJob[]>({
     queryKey: ["dashboard-transactions", currentYear],
     queryFn: async () => fetchAll((sb) =>
       sb.from("transactions")
         .select("*, jobs(job_number, name)")
         .gte("date", yearStart)
         .order("date", { ascending: false })
-    ),
+    ) as Promise<TransactionWithJob[]>,
   });
 
   const { data: jobs = [] } = useQuery({
@@ -102,9 +103,9 @@ export default function Dashboard() {
     queryFn: async () => fetchAll((sb) => sb.from("vendor_invoices").select("*")),
   });
 
-  const { data: payrollEntries = [] } = useQuery({
+  const { data: payrollEntries = [] } = useQuery<PayrollEntryWithRun[]>({
     queryKey: ["dashboard-payroll"],
-    queryFn: async () => fetchAll((sb) => sb.from("payroll_entries").select("*, payroll_runs(period_end)")),
+    queryFn: async () => fetchAll((sb) => sb.from("payroll_entries").select("*, payroll_runs(period_end)")) as Promise<PayrollEntryWithRun[]>,
   });
 
   const { data: employees = [] } = useQuery({
@@ -112,9 +113,9 @@ export default function Dashboard() {
     queryFn: async () => fetchAll((sb) => sb.from("employees").select("*").eq("active", true)),
   });
 
-  const { data: timesheets = [] } = useQuery({
+  const { data: timesheets = [] } = useQuery<TimesheetWithEmployee[]>({
     queryKey: ["dashboard-timesheets"],
-    queryFn: async () => fetchAll((sb) => sb.from("timesheets").select("*, employees(rate, pay_type)")),
+    queryFn: async () => fetchAll((sb) => sb.from("timesheets").select("*, employees(rate, pay_type)")) as Promise<TimesheetWithEmployee[]>,
   });
 
   const { data: vendorInvoicesAll = [] } = useQuery({
@@ -269,7 +270,7 @@ export default function Dashboard() {
       const start = format(startOfMonth(m), "yyyy-MM-dd");
       const end = format(endOfMonth(m), "yyyy-MM-dd");
       const mEntries = payrollEntries.filter((e) => {
-        const runEnd = (e as any).payroll_runs?.period_end;
+        const runEnd = e.payroll_runs?.period_end;
         return runEnd && runEnd >= start && runEnd <= end;
       });
       const gross = sumMoney(mEntries.map((e) => e.gross_pay || 0));
@@ -289,8 +290,8 @@ export default function Dashboard() {
 
         const jobTS = timesheets.filter((t) => t.job_id === job.id);
         const laborCost = sumMoney(jobTS.map((t) => {
-          const rate = (t as any).employees?.rate || 0;
-          const payType = (t as any).employees?.pay_type;
+          const rate = t.employees?.rate || 0;
+          const payType = t.employees?.pay_type;
           return roundMoney((t.hours || 0) * (payType === "salary" ? rate / 2080 : rate));
         }));
 
@@ -521,7 +522,7 @@ export default function Dashboard() {
                     <tr key={tx.id} className="border-b border-border/50 hover:bg-muted/30">
                       <td className="px-5 py-2 text-xs text-muted-foreground">{tx.date}</td>
                       <td className="px-5 py-2 text-xs font-medium text-card-foreground truncate max-w-[140px]">{tx.payee}</td>
-                      <td className="px-5 py-2 font-mono text-xs text-primary">{(tx as any).jobs?.job_number || "—"}</td>
+                      <td className="px-5 py-2 font-mono text-xs text-primary">{tx.jobs?.job_number || "—"}</td>
                       <td className={cn("px-5 py-2 text-right font-mono text-xs font-medium", amount >= 0 ? "text-success" : "text-destructive")}>
                         {amount >= 0 ? "+" : ""}{fmt(amount)}
                       </td>
