@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { roundMoney } from "@/lib/utils";
 
 export interface TaxBracket {
   bracket_min: number;
@@ -189,7 +190,7 @@ function calcFederalTax(
   const brackets =
     FED_ANNUAL_BRACKETS_2026[filingStatus] || FED_ANNUAL_BRACKETS_2026.single;
   const annualTax = applyAnnualBrackets(adjustedAnnualWage, brackets);
-  return Math.round((annualTax / periods) * 100) / 100;
+  return roundMoney(annualTax / periods);
 }
 
 /**
@@ -224,7 +225,7 @@ function calcCaliforniaTax(
     (withholding_allowances || 0) * CA_EXEMPTION_CREDIT_PER_ALLOWANCE;
   annualTax = Math.max(0, annualTax - exemptionCredit);
 
-  return Math.round((annualTax / periods) * 100) / 100;
+  return roundMoney(annualTax / periods);
 }
 
 /* ── DB helpers ───────────────────────────────────────────── */
@@ -248,7 +249,7 @@ function applyBrackets(amount: number, brackets: TaxBracket[]): number {
       tax += taxableInBracket * b.rate;
     }
   }
-  return Math.round(tax * 100) / 100;
+  return roundMoney(tax);
 }
 
 async function fetchBrackets(
@@ -290,7 +291,7 @@ async function fetchDeductions(employeeId: string) {
 
 function calcDeductionAmount(deduction: any, grossPay: number): number {
   if (deduction.calc_method === "percentage") {
-    return Math.round(grossPay * (deduction.percentage / 100) * 100) / 100;
+    return roundMoney(grossPay * (deduction.percentage / 100));
   }
   return deduction.amount || 0;
 }
@@ -323,19 +324,19 @@ export async function calculatePayroll(
   let deductions_pretax = 0;
   for (const d of preTaxDeductions) {
     const amt = calcDeductionAmount(d, grossPay);
-    deductions_pretax += amt;
+    deductions_pretax = roundMoney(deductions_pretax + amt);
     deduction_details.push({ type: d.deduction_type, description: d.description, amount: amt, pre_tax: true });
   }
 
   let ficaExemptAmount = 0;
   for (const d of ficaExemptDeductions) {
-    ficaExemptAmount += calcDeductionAmount(d, grossPay);
+    ficaExemptAmount = roundMoney(ficaExemptAmount + calcDeductionAmount(d, grossPay));
   }
 
   let deductions_posttax = 0;
   for (const d of postTaxDeductions) {
     const amt = calcDeductionAmount(d, grossPay);
-    deductions_posttax += amt;
+    deductions_posttax = roundMoney(deductions_posttax + amt);
     deduction_details.push({ type: d.deduction_type, description: d.description, amount: amt, pre_tax: false });
   }
 
@@ -361,28 +362,20 @@ export async function calculatePayroll(
   const ficaWages = Math.max(0, grossPay - ficaExemptAmount);
 
   // Social Security: 6.2% (cap applied on YTD basis — for now, apply flat rate)
-  const ss_tax = Math.round(ficaWages * SS_RATE * 100) / 100;
+  const ss_tax = roundMoney(ficaWages * SS_RATE);
 
   // Medicare: 1.45% flat (additional 0.9% only after YTD exceeds $200k — not applied per-period)
-  const medicare_tax = Math.round(ficaWages * MEDICARE_RATE * 100) / 100;
+  const medicare_tax = roundMoney(ficaWages * MEDICARE_RATE);
 
-  const fica = Math.round((ss_tax + medicare_tax) * 100) / 100;
+  const fica = roundMoney(ss_tax + medicare_tax);
 
   // 6. SDI (California) — applied to GROSS pay (not reduced by Section 125)
-  const sdi_tax = Math.round(grossPay * CA_SDI_RATE * 100) / 100;
+  const sdi_tax = roundMoney(grossPay * CA_SDI_RATE);
 
   // 7. Net pay
-  const net_pay =
-    Math.round(
-      (grossPay -
-        fed_tax -
-        state_tax -
-        fica -
-        sdi_tax -
-        deductions_pretax -
-        deductions_posttax) *
-        100
-    ) / 100;
+  const net_pay = roundMoney(
+    grossPay - fed_tax - state_tax - fica - sdi_tax - deductions_pretax - deductions_posttax
+  );
 
   return {
     gross_pay: grossPay,
