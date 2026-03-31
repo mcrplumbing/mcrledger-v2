@@ -14,6 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Save, Loader2, Briefcase, CheckCircle } from "lucide-react";
+import { parseMoney, sumMoney } from "@/lib/utils";
 import { toast } from "sonner";
 
 interface CostEntry {
@@ -66,7 +67,7 @@ export default function JobOpeningBalances() {
         job_number: newJob.job_number,
         name: newJob.name,
         client: newJob.client,
-        budget: parseFloat(newJob.budget) || 0,
+        budget: parseMoney(newJob.budget),
       }).select().single();
       if (error) throw error;
       return data;
@@ -93,7 +94,7 @@ export default function JobOpeningBalances() {
 
       // Expense lines (debit expense, credit OBE)
       for (const cost of costs) {
-        const amt = parseFloat(cost.amount) || 0;
+        const amt = parseMoney(cost.amount);
         if (amt <= 0) continue;
         const acctId = findAccount(cost.accountNumber);
         if (!acctId) throw new Error(`GL account ${cost.accountNumber} (${cost.label}) not found. Add it to Chart of Accounts.`);
@@ -102,7 +103,7 @@ export default function JobOpeningBalances() {
       }
 
       // Revenue line (credit revenue, debit OBE) — gives job its revenue for profitability
-      const revAmt = parseFloat(revenue) || 0;
+      const revAmt = parseMoney(revenue);
       if (revAmt > 0) {
         const revId = findAccount(REVENUE_CATEGORY.accountNumber);
         if (!revId) throw new Error(`GL account ${REVENUE_CATEGORY.accountNumber} (Revenue) not found.`);
@@ -113,7 +114,7 @@ export default function JobOpeningBalances() {
       // AR reclassification — moves AR from generic opening balance to job-tagged
       // DR AR (with job_id) / CR AR (no job_id) = net zero on GL 1100 total
       // This avoids double-counting the AR already posted via Opening Balance Wizard
-      const arAmt = parseFloat(arBalance) || 0;
+      const arAmt = parseMoney(arBalance);
       if (arAmt > 0) {
         const arId = findAccount("1100");
         if (!arId) throw new Error("GL account 1100 (AR) not found.");
@@ -158,8 +159,8 @@ export default function JobOpeningBalances() {
     onError: (e: any) => toast.error(e.message),
   });
 
-  const totalCosts = costs.reduce((s, c) => s + (parseFloat(c.amount) || 0), 0);
-  const totalRevenue = parseFloat(revenue) || 0;
+  const totalCosts = sumMoney(costs.map((c) => parseMoney(c.amount)));
+  const totalRevenue = parseMoney(revenue);
 
   return (
     <div className="p-6 max-w-3xl mx-auto space-y-6">
@@ -291,7 +292,7 @@ export default function JobOpeningBalances() {
             <Button
               className="w-full"
               onClick={() => postMutation.mutate()}
-              disabled={postMutation.isPending || totalCosts + totalRevenue + (parseFloat(arBalance) || 0) === 0}
+              disabled={postMutation.isPending || totalCosts + totalRevenue + parseMoney(arBalance) === 0}
             >
               {postMutation.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
               Post Opening Balances
