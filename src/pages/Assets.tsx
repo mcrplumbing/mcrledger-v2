@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Pencil, Trash2 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, parseMoney, sumMoney } from "@/lib/utils";
 import { toast } from "sonner";
 
 const defaultForm = () => ({ name: "", category: "", purchase_date: "", cost: "", depreciation_method: "Straight-line", assigned_to: "" });
@@ -35,7 +35,7 @@ export default function Assets() {
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      const cost = parseFloat(form.cost) || 0;
+      const cost = parseMoney(form.cost);
       const row = { name: form.name, category: form.category, purchase_date: form.purchase_date || null, cost, depreciation_method: form.depreciation_method, assigned_to: form.assigned_to };
       if (editingId) {
         const { error } = await supabase.from("assets").update(row).eq("id", editingId);
@@ -55,8 +55,8 @@ export default function Assets() {
     onError: (err: Error) => toast.error(err.message),
   });
 
-  const totalCost = assets.reduce((s, a) => s + (a.cost || 0), 0);
-  const totalValue = assets.reduce((s, a) => s + (a.current_value || 0), 0);
+  const totalCost = sumMoney(assets.map((a) => a.cost || 0));
+  const totalValue = sumMoney(assets.map((a) => a.current_value || 0));
 
   return (
     <div className="p-8">
