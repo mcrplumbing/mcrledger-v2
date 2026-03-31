@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Upload, FileSpreadsheet, Check, AlertCircle, CheckCircle2, XCircle, Edit2 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, parseMoney } from "@/lib/utils";
 import { toast } from "sonner";
 
 interface Props {
@@ -159,7 +159,7 @@ export default function BulkApImportDialog({ open, onOpenChange }: Props) {
       return {
         vendor_name: vendorName,
         invoice_no: row[colIdx.invoice] || "",
-        amount: parseFloat((row[colIdx.amount] || "0").replace(/[$,]/g, "")) || 0,
+        amount: parseMoney(row[colIdx.amount]),
         date: row[colIdx.date] || new Date().toISOString().split("T")[0],
         due_date: row[colIdx.due_date] || "",
         job_number: jobNumber,
