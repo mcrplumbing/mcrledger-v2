@@ -3,6 +3,7 @@ import { useState } from "react";
 import ClientSelect from "@/components/ClientSelect";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import type { Job } from "@/integrations/supabase/helpers";
 import { fetchAll } from "@/lib/fetchAll";
 import PageHeader from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -50,7 +51,7 @@ export default function JobOpeningBalances() {
 
   const { data: jobs = [] } = useQuery({
     queryKey: ["jobs-list"],
-    queryFn: () => fetchAll((sb) => sb.from("jobs").select("*").order("job_number")),
+    queryFn: () => fetchAll<Job>((sb) => sb.from("jobs").select("*").order("job_number")),
   });
 
   const { data: glAccounts = [] } = useQuery({
@@ -87,7 +88,7 @@ export default function JobOpeningBalances() {
       const oeId = findAccount("3900");
       if (!oeId) throw new Error("Opening Balance Equity account (3900) not found. Add it to Chart of Accounts first.");
 
-      const job = jobs.find((j: any) => j.id === selectedJobId);
+      const job = jobs.find((j) => j.id === selectedJobId);
       if (!job) throw new Error("Select a job first");
 
       const lines: { account_id: string; debit: number; credit: number; description: string; job_id: string }[] = [];
@@ -119,18 +120,18 @@ export default function JobOpeningBalances() {
         const arId = findAccount("1100");
         if (!arId) throw new Error("GL account 1100 (AR) not found.");
         // Debit AR tagged to this job
-        lines.push({ account_id: arId, debit: arAmt, credit: 0, description: `Reclassify AR to ${(job as any).job_number}`, job_id: selectedJobId });
+        lines.push({ account_id: arId, debit: arAmt, credit: 0, description: `Reclassify AR to ${job?.job_number}`, job_id: selectedJobId });
         // Credit AR untagged (removes from generic pool)
-        lines.push({ account_id: arId, debit: 0, credit: arAmt, description: `Reclassify AR to ${(job as any).job_number}`, job_id: "" });
+        lines.push({ account_id: arId, debit: 0, credit: arAmt, description: `Reclassify AR to ${job?.job_number}`, job_id: "" });
       }
 
       if (lines.length === 0) throw new Error("Enter at least one amount");
 
       // Create JE as draft
       const { data: je, error: jeErr } = await supabase.from("journal_entries").insert({
-        entry_number: `JOB-OB-${(job as any).job_number}`,
+        entry_number: `JOB-OB-${job?.job_number}`,
         date: new Date().toISOString().slice(0, 10),
-        description: `Job opening balances: ${(job as any).job_number} — ${(job as any).name}`,
+        description: `Job opening balances: ${job?.job_number} — ${job?.name}`,
         status: "draft",
       }).select().single();
       if (jeErr) throw jeErr;
@@ -145,7 +146,7 @@ export default function JobOpeningBalances() {
       const { error: postErr } = await supabase.from("journal_entries").update({ status: "posted" }).eq("id", je.id);
       if (postErr) throw postErr;
 
-      return (job as any).job_number;
+      return job?.job_number;
     },
     onSuccess: (jobNum) => {
       toast.success(`Opening balances posted for Job ${jobNum}`);
@@ -181,7 +182,7 @@ export default function JobOpeningBalances() {
               <Select value={selectedJobId} onValueChange={setSelectedJobId}>
                 <SelectTrigger><SelectValue placeholder="Choose a job…" /></SelectTrigger>
                 <SelectContent>
-                  {jobs.map((j: any) => (
+                  {jobs.map((j) => (
                     <SelectItem key={j.id} value={j.id}>
                       {j.job_number} — {j.name} ({j.client || "No client"})
                       {postedJobs.includes(j.id) ? " ✓" : ""}
