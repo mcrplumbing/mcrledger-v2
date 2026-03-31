@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Trash2, DollarSign, Percent } from "lucide-react";
+import { parseMoney } from "@/lib/utils";
 import { toast } from "sonner";
 
 const DEDUCTION_TYPES = [
@@ -74,12 +75,12 @@ export default function EmployeeDeductions() {
         deduction_type: form.deduction_type,
         description: form.description,
         calc_method: form.calc_method,
-        amount: parseFloat(form.amount) || 0,
+        amount: parseMoney(form.amount),
         percentage: parseFloat(form.percentage) || 0,
         pre_tax: form.pre_tax,
         reduces_fica: form.pre_tax && form.reduces_fica,
         priority: parseInt(form.priority) || 100,
-        max_annual: form.max_annual ? parseFloat(form.max_annual) : null,
+        max_annual: form.max_annual ? parseMoney(form.max_annual) : null,
       } as any);
       if (error) throw error;
     },
