@@ -59,7 +59,11 @@ export const useAuth = () => useContext(AuthContext);
 
 async function fetchRole(userId: string): Promise<AppRole> {
   const { data, error } = await supabase.rpc("get_user_role", { _user_id: userId });
-  if (error || !data) return "viewer";
+  if (error) {
+    console.error("Failed to fetch user role:", error.message);
+    return "viewer";
+  }
+  if (!data) return "viewer";
   return data as AppRole;
 }
 
@@ -68,7 +72,11 @@ async function fetchPermissions(userId: string): Promise<PageKey[]> {
     .from("user_page_permissions")
     .select("page_key")
     .eq("user_id", userId);
-  if (error || !data) return [];
+  if (error) {
+    console.error("Failed to fetch user permissions:", error.message);
+    return [];
+  }
+  if (!data) return [];
   return data.map((r: any) => r.page_key as PageKey);
 }
 
@@ -85,12 +93,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
+    let mounted = true;
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (_event, session) => {
+        if (!mounted) return;
         setSession(session);
         if (session?.user) {
           // Don't await inside onAuthStateChange to avoid deadlocks
-          loadRoleAndPermissions(session.user.id).then(() => setLoading(false));
+          loadRoleAndPermissions(session.user.id)
+            .then(() => { if (mounted) setLoading(false); })
+            .catch((err) => {
+              console.error("Auth state change: failed to load role/permissions:", err);
+              if (mounted) setLoading(false);
+            });
         } else {
           setRole("viewer");
           setPermissions([]);
@@ -100,15 +116,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
 
     supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!mounted) return;
       setSession(session);
       if (session?.user) {
-        loadRoleAndPermissions(session.user.id).then(() => setLoading(false));
+        loadRoleAndPermissions(session.user.id)
+          .then(() => { if (mounted) setLoading(false); })
+          .catch((err) => {
+            console.error("Initial session: failed to load role/permissions:", err);
+            if (mounted) setLoading(false);
+          });
       } else {
         setLoading(false);
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signOut = async () => {
