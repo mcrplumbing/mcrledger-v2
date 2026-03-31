@@ -9,7 +9,7 @@ import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Upload, FileText, Check, AlertCircle, Trash2, Loader2, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
+import { cn, parseMoney } from "@/lib/utils";
 import * as pdfjsLib from "pdfjs-dist";
 
 // Configure PDF.js worker
@@ -136,7 +136,7 @@ export default function InvoicePdfImport() {
 
         return {
           ...inv,
-          amount: parseFloat(inv.amount) || 0,
+          amount: parseMoney(inv.amount),
           vendor_id: vendorId,
           selected: true,
           isDuplicate,
@@ -348,7 +348,7 @@ export default function InvoicePdfImport() {
                         type="number"
                         step="0.01"
                         value={inv.amount}
-                        onChange={(e) => updateInvoice(idx, { amount: parseFloat(e.target.value) || 0 })}
+                        onChange={(e) => updateInvoice(idx, { amount: parseMoney(e.target.value) })}
                       />
                     </td>
                     <td className="px-3 py-2">
