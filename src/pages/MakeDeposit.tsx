@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import type { ReceivedPaymentWithInvoice } from "@/integrations/supabase/helpers";
 import PageHeader from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,7 +28,7 @@ export default function MakeDeposit() {
         .eq("deposited", false)
         .order("payment_date", { ascending: true });
       if (error) throw error;
-      return data;
+      return data as ReceivedPaymentWithInvoice[];
     },
   });
 
@@ -211,7 +212,7 @@ export default function MakeDeposit() {
                   <td className="px-4 py-3 text-muted-foreground">{p.payment_date}</td>
                   <td className="px-4 py-3 font-medium text-card-foreground">{p.client}</td>
                   <td className="px-4 py-3 font-mono text-xs text-primary">
-                    {(p as any).job_invoices?.invoice_number || "—"}
+                    {p.job_invoices?.invoice_number || "—"}
                   </td>
                   <td className="px-4 py-3 text-muted-foreground capitalize">{p.payment_method}</td>
                   <td className="px-4 py-3 font-mono text-xs text-card-foreground">{p.reference_no || "—"}</td>
