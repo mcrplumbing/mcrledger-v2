@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAll } from "@/lib/fetchAll";
 import { calculatePayroll } from "@/lib/payrollCalc";
+import { parseMoney, roundMoney, fmt } from "@/lib/utils";
 import PageHeader from "@/components/PageHeader";
 import StatCard from "@/components/StatCard";
 import DeleteConfirmDialog from "@/components/DeleteConfirmDialog";
@@ -141,7 +142,7 @@ export default function Payroll() {
     mutationFn: async () => {
       const row = {
         employee_number: form.employee_number, name: form.name, role: form.role,
-        pay_type: form.pay_type, rate: parseFloat(form.rate) || 0,
+        pay_type: form.pay_type, rate: parseMoney(form.rate),
         filing_status: form.filing_status, pay_period: form.pay_period,
         withholding_allowances: parseInt(form.withholding_allowances) || 0,
         state: form.state,
@@ -195,9 +196,9 @@ export default function Payroll() {
         let grossPay: number;
         if (emp.pay_type === "salary") {
           const periodsPerYear = emp.pay_period === "weekly" ? 52 : emp.pay_period === "biweekly" ? 26 : emp.pay_period === "semimonthly" ? 24 : 12;
-          grossPay = Math.round((emp.rate / periodsPerYear) * 100) / 100;
+          grossPay = roundMoney(emp.rate / periodsPerYear);
         } else {
-          grossPay = Math.round(hours * emp.rate * 100) / 100;
+          grossPay = roundMoney(hours * emp.rate);
         }
 
         if (grossPay <= 0) continue;
@@ -463,7 +464,7 @@ export default function Payroll() {
   const totalNet = entries.reduce((s: number, e: any) => s + (e.net_pay || 0), 0);
   const totalTax = entries.reduce((s: number, e: any) => s + (e.fed_tax || 0) + (e.state_tax || 0) + (e.fica || 0), 0);
 
-  const fmt = (n: number) => `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
 
   const getRunTotals = (run: any) => {
     const re = (run as any)?.payroll_entries || [];
