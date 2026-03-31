@@ -4,14 +4,13 @@ import { fetchAll } from "@/lib/fetchAll";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { FileText, DollarSign, Clock, Receipt } from "lucide-react";
+import { fmt } from "@/lib/utils";
 
 interface JobDetailDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   job: any;
 }
-
-const fmt = (n: number) => `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 export default function JobDetailDialog({ open, onOpenChange, job }: JobDetailDialogProps) {
   const jobId = job?.id;
