@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import PageHeader from "@/components/PageHeader";
+import { parseMoney } from "@/lib/utils";
 import DeleteConfirmDialog from "@/components/DeleteConfirmDialog";
 
 import CheckPrintDialog from "@/components/CheckPrintDialog";
@@ -144,7 +145,7 @@ export default function Checkbook() {
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      const amount = parseFloat(form.amount) || 0;
+      const amount = parseMoney(form.amount);
       const bankId = form.bank_account_id || null;
 
       let checkNo = form.check_no;
