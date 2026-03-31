@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import DeleteConfirmDialog from "@/components/DeleteConfirmDialog";
 import { Plus, Pencil, Trash2, Building2 } from "lucide-react";
+import { parseMoney, fmt } from "@/lib/utils";
 import { toast } from "sonner";
 
 const defaultForm = () => ({
@@ -101,7 +102,7 @@ export default function BankAccounts() {
         account_number: form.account_number,
         routing_number: form.routing_number,
         account_type: form.account_type,
-        opening_balance: parseFloat(form.opening_balance) || 0,
+        opening_balance: parseMoney(form.opening_balance),
         next_check_number: parseInt(form.next_check_number) || 1001,
       };
       if (editingId) {
@@ -133,7 +134,6 @@ export default function BankAccounts() {
     onError: (err: Error) => toast.error(err.message),
   });
 
-  const fmt = (n: number) => `$${n.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
 
   return (
     <div className="p-8">
