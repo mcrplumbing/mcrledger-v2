@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Search } from "lucide-react";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
+import { cn, fmt } from "@/lib/utils";
 
 const accountTypes = ["asset", "liability", "equity", "revenue", "expense"];
 
@@ -81,9 +81,6 @@ export default function ChartOfAccounts() {
     });
     return map;
   }, [jeLines]);
-
-  const fmt = (n: number) => `$${Math.abs(n).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
-
 
   const createAccount = useMutation({
     mutationFn: async () => {
