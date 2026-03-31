@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAll } from "@/lib/fetchAll";
+import { roundMoney, sumMoney } from "@/lib/utils";
 import PageHeader from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -90,8 +91,8 @@ export default function CpaExport() {
       l.gl_accounts?.account_number || "",
       l.gl_accounts?.name || "",
       l.description || l.journal_entries?.description || "",
-      l.debit?.toFixed(2) || "0.00",
-      l.credit?.toFixed(2) || "0.00",
+      roundMoney(l.debit || 0).toFixed(2),
+      roundMoney(l.credit || 0).toFixed(2),
     ].map(v => `"${v}"`).join(","));
     downloadFile([headers.join(","), ...rows].join("\n"), `gl-detail-${year}.csv`);
     toast.success(`Exported ${rows.length} journal lines as CSV`);
@@ -102,8 +103,8 @@ export default function CpaExport() {
     yearLines.forEach((l: any) => {
       const acct = l.gl_accounts?.account_number || "?";
       if (!balances[acct]) balances[acct] = { debit: 0, credit: 0 };
-      balances[acct].debit += l.debit || 0;
-      balances[acct].credit += l.credit || 0;
+      balances[acct].debit = roundMoney(balances[acct].debit + (l.debit || 0));
+      balances[acct].credit = roundMoney(balances[acct].credit + (l.credit || 0));
     });
     const headers = ["Account #", "Account Name", "Debit", "Credit"];
     const rows = accounts
@@ -148,7 +149,7 @@ export default function CpaExport() {
       entryLines.forEach((l: any, i: number) => {
         const date = (l.journal_entries?.date || "").replace(/-/g, "/");
         const acct = l.gl_accounts?.name || "";
-        const amount = ((l.debit || 0) - (l.credit || 0)).toFixed(2);
+        const amount = roundMoney((l.debit || 0) - (l.credit || 0)).toFixed(2);
         const memo = l.description || l.journal_entries?.description || "";
         if (i === 0) {
           lines.push(`TRNS\tGENERAL JOURNAL\t${date}\t${acct}\t\t${amount}\t${memo}`);
@@ -201,7 +202,7 @@ ENCODING:USASCII
 `;
 
     yearTxns.forEach((t) => {
-      const amount = ((t.deposit || 0) - (t.payment || 0)).toFixed(2);
+      const amount = roundMoney((t.deposit || 0) - (t.payment || 0)).toFixed(2);
       const type = (t.deposit || 0) > 0 ? "CREDIT" : "DEBIT";
       const date = t.date.replace(/-/g, "");
       ofx += `<STMTTRN>
@@ -216,7 +217,7 @@ ENCODING:USASCII
 `;
     });
 
-    const totalBal = yearTxns.reduce((s, t) => s + (t.deposit || 0) - (t.payment || 0), 0);
+    const totalBal = sumMoney(yearTxns.map((t) => roundMoney((t.deposit || 0) - (t.payment || 0))));
     ofx += `</BANKTRANLIST>
 <LEDGERBAL>
 <BALAMT>${totalBal.toFixed(2)}
