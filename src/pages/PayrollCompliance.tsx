@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import type { PayrollEntryWithEmployee } from "@/integrations/supabase/helpers";
 import PageHeader from "@/components/PageHeader";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -47,14 +48,14 @@ export default function PayrollCompliance() {
     },
   });
 
-  const { data: payrollEntries = [] } = useQuery({
+  const { data: payrollEntries = [] } = useQuery<PayrollEntryWithEmployee[]>({
     queryKey: ["payroll-entries-compliance"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("payroll_entries")
         .select("*, employees(name, employee_number)");
       if (error) throw error;
-      return data;
+      return data as PayrollEntryWithEmployee[];
     },
   });
 
@@ -106,8 +107,8 @@ export default function PayrollCompliance() {
   const futaByEmployee = useMemo(() => {
     const map: Record<string, { name: string; empNo: string; totalWages: number; futaWages: number }> = {};
     yearEntries.forEach((e) => {
-      const empName = (e as any).employees?.name || "Unknown";
-      const empNo = (e as any).employees?.employee_number || "";
+      const empName = e.employees?.name || "Unknown";
+      const empNo = e.employees?.employee_number || "";
       if (!map[e.employee_id]) {
         map[e.employee_id] = { name: empName, empNo, totalWages: 0, futaWages: 0 };
       }
@@ -130,8 +131,8 @@ export default function PayrollCompliance() {
       stateWages: number; stateWithheld: number;
     }> = {};
     yearEntries.forEach((e) => {
-      const empName = (e as any).employees?.name || "Unknown";
-      const empNo = (e as any).employees?.employee_number || "";
+      const empName = e.employees?.name || "Unknown";
+      const empNo = e.employees?.employee_number || "";
       if (!map[e.employee_id]) {
         map[e.employee_id] = {
           name: empName, empNo, grossWages: 0, fedWithheld: 0,
